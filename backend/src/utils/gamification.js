@@ -26,7 +26,34 @@ function getMotivationalMessage(progressPercentage) {
   return "Seu proximo ponto comeca com o primeiro habito de hoje.";
 }
 
+function getBadges({ totalPoints, currentStreak, completedHabits }) {
+  const badges = [];
+
+  if (completedHabits >= 1) {
+    badges.push("Primeiro passo");
+  }
+
+  if (currentStreak >= 3) {
+    badges.push("Ritmo de 3 dias");
+  }
+
+  if (currentStreak >= 7) {
+    badges.push("Sequencia lendaria");
+  }
+
+  if (totalPoints >= 120) {
+    badges.push("Nivel intermediario");
+  }
+
+  if (totalPoints >= 300) {
+    badges.push("Elite de habitos");
+  }
+
+  return badges;
+}
+
 module.exports = {
   getLevel,
   getMotivationalMessage,
+  getBadges,
 };

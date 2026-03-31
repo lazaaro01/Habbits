@@ -257,7 +257,7 @@ select:focus {
 
 .hero-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-top: 18px;
 }
@@ -293,9 +293,24 @@ select:focus {
 }
 
 .habit-list,
-.history-list {
+.history-list,
+.badge-list {
   display: grid;
   gap: 14px;
+}
+
+.badge-list {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.badge-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 163, 79, 0.18), rgba(104, 170, 255, 0.16));
+  border: 1px solid rgba(255, 214, 153, 0.15);
+  color: #ffe4bb;
+  font-weight: 700;
+  text-align: center;
 }
 
 .habit-card {
@@ -334,6 +349,12 @@ select:focus {
 }
 
 .habit-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.form-actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;

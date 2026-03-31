@@ -32,6 +32,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [celebratingHabitId, setCelebratingHabitId] = useState(null);
+  const [editingHabitId, setEditingHabitId] = useState(null);
 
   async function loadAppData() {
     setLoading(true);
@@ -116,6 +117,35 @@ function App() {
     } catch (error) {
       setMessage(error.message);
     }
+  }
+
+  async function handleEditHabitSubmit(event) {
+    event.preventDefault();
+    setMessage("");
+
+    try {
+      await api.updateHabit(editingHabitId, habitForm);
+      setHabitForm(initialHabitForm);
+      setEditingHabitId(null);
+      setMessage("Habito atualizado com sucesso.");
+      await loadAppData();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  function startEditingHabit(habit) {
+    setEditingHabitId(habit.id);
+    setHabitForm({
+      name: habit.name,
+      description: habit.description || "",
+      frequency: habit.frequency,
+    });
+  }
+
+  function cancelEditingHabit() {
+    setEditingHabitId(null);
+    setHabitForm(initialHabitForm);
   }
 
   function handleLogout() {
@@ -240,6 +270,10 @@ function App() {
               <strong>{stats?.nextLevelAt ? `${stats.nextLevelAt} pts` : "Max"}</strong>
               <span>proximo marco</span>
             </div>
+            <div>
+              <strong>{stats?.currentStreak || 0} dias</strong>
+              <span>sequencia atual</span>
+            </div>
           </div>
 
           <p className="motivation">{stats?.motivationalMessage}</p>
@@ -248,12 +282,38 @@ function App() {
         <section className="panel">
           <div className="panel-header">
             <div>
-              <p className="eyebrow">Novo habito</p>
-              <h2>Adicionar ao plano</h2>
+              <p className="eyebrow">Conquistas</p>
+              <h2>Badges desbloqueadas</h2>
             </div>
           </div>
 
-          <form className="habit-form" onSubmit={handleCreateHabit}>
+          <div className="badge-list">
+            {(stats?.badges || []).length > 0 ? (
+              stats.badges.map((badge) => (
+                <div className="badge-card" key={badge}>
+                  {badge}
+                </div>
+              ))
+            ) : (
+              <div className="empty-state">
+                <p>Complete habitos em dias seguidos para liberar badges.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-header">
+            <div>
+              <p className="eyebrow">{editingHabitId ? "Edicao" : "Novo habito"}</p>
+              <h2>{editingHabitId ? "Atualizar habito" : "Adicionar ao plano"}</h2>
+            </div>
+          </div>
+
+          <form
+            className="habit-form"
+            onSubmit={editingHabitId ? handleEditHabitSubmit : handleCreateHabit}
+          >
             <input
               type="text"
               placeholder="Nome do habito"
@@ -280,9 +340,16 @@ function App() {
               <option value="daily">Diario</option>
               <option value="weekly">Semanal</option>
             </select>
-            <button className="primary-button" type="submit">
-              Salvar habito
-            </button>
+            <div className="form-actions">
+              <button className="primary-button" type="submit">
+                {editingHabitId ? "Salvar alteracoes" : "Salvar habito"}
+              </button>
+              {editingHabitId ? (
+                <button className="ghost-button" type="button" onClick={cancelEditingHabit}>
+                  Cancelar
+                </button>
+              ) : null}
+            </div>
           </form>
         </section>
 
@@ -325,6 +392,13 @@ function App() {
                       disabled={Boolean(habit.completedToday)}
                     >
                       {habit.completedToday ? "Concluido hoje" : "Marcar feito"}
+                    </button>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      onClick={() => startEditingHabit(habit)}
+                    >
+                      Editar
                     </button>
                     <button
                       className="ghost-button danger"

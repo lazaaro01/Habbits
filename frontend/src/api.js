@@ -38,6 +38,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  updateHabit: (habitId, payload) =>
+    request(`/habits/${habitId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
   completeHabit: (habitId) =>
     request(`/habits/${habitId}/complete`, {
       method: "POST",
