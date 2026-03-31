@@ -1,6 +1,6 @@
 const express = require("express");
 const authMiddleware = require("../middleware/auth");
-const { getLevel, getMotivationalMessage } = require("../utils/gamification");
+const { getLevel, getMotivationalMessage, getBadges } = require("../utils/gamification");
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -17,6 +17,24 @@ function getLastDays(count) {
   }
 
   return days;
+}
+
+function getCurrentStreak(completedDates) {
+  const uniqueDates = new Set(completedDates);
+  let streak = 0;
+  const cursor = new Date();
+
+  while (true) {
+    const currentDate = cursor.toISOString().slice(0, 10);
+    if (!uniqueDates.has(currentDate)) {
+      break;
+    }
+
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
 }
 
 function createHabitsRouter(db) {
@@ -97,6 +115,47 @@ function createHabitsRouter(db) {
       return res.json({ message: "Habito removido com sucesso." });
     } catch (error) {
       return res.status(500).json({ message: "Erro ao remover habito." });
+    }
+  });
+
+  router.put("/:id", async (req, res) => {
+    const { name, description, frequency } = req.body;
+
+    if (!name || !frequency) {
+      return res.status(400).json({ message: "Nome e frequencia sao obrigatorios." });
+    }
+
+    if (!["daily", "weekly"].includes(frequency)) {
+      return res.status(400).json({ message: "Frequencia invalida." });
+    }
+
+    try {
+      const result = await db.run(
+        `
+          UPDATE habits
+          SET name = ?, description = ?, frequency = ?
+          WHERE id = ? AND user_id = ?
+        `,
+        name,
+        description || "",
+        frequency,
+        req.params.id,
+        req.user.id
+      );
+
+      if (!result.changes) {
+        return res.status(404).json({ message: "Habito nao encontrado." });
+      }
+
+      const updatedHabit = await db.get(
+        "SELECT * FROM habits WHERE id = ? AND user_id = ?",
+        req.params.id,
+        req.user.id
+      );
+
+      return res.json(updatedHabit);
+    } catch (error) {
+      return res.status(500).json({ message: "Erro ao atualizar habito." });
     }
   });
 
@@ -183,6 +242,11 @@ function createHabitsRouter(db) {
         req.user.id
       );
 
+      const completedHabitsRow = await db.get(
+        "SELECT COUNT(*) AS completedHabits FROM habit_entries WHERE user_id = ?",
+        req.user.id
+      );
+
       const historyRows = await db.all(
         `
           SELECT completed_on, COUNT(*) AS completedCount
@@ -195,20 +259,39 @@ function createHabitsRouter(db) {
         ...lastDays
       );
 
+      const streakRows = await db.all(
+        `
+          SELECT DISTINCT completed_on
+          FROM habit_entries
+          WHERE user_id = ?
+          ORDER BY completed_on DESC
+        `,
+        req.user.id
+      );
+
       const totalHabits = habits.length;
       const completedToday = habits.filter((habit) => habit.completedToday).length;
       const progressPercentage = totalHabits === 0 ? 0 : Math.round((completedToday / totalHabits) * 100);
       const level = getLevel(pointsRow.totalPoints);
+      const currentStreak = getCurrentStreak(streakRows.map((row) => row.completed_on));
+      const badges = getBadges({
+        totalPoints: pointsRow.totalPoints,
+        currentStreak,
+        completedHabits: completedHabitsRow.completedHabits,
+      });
 
       return res.json({
         habits,
         stats: {
           totalHabits,
           completedToday,
+          completedHabits: completedHabitsRow.completedHabits,
           progressPercentage,
           totalPoints: pointsRow.totalPoints,
           level: level.name,
           nextLevelAt: level.nextLevelAt,
+          currentStreak,
+          badges,
           motivationalMessage: getMotivationalMessage(progressPercentage),
         },
         history: lastDays.map((date) => {
